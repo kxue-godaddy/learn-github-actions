@@ -1,0 +1,20 @@
+name: Upload Release
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      tag:
+        type: string
+        required: true
+permissions:
+  contents: write
+jobs:
+  upload-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: xueke477/create-release@b4473e8f7c45c8616ff92a99a97071f62e4ab5d1
+        with:
+          tag_name: ${{ inputs.tag }}
+          target_commitish: master
+          files: README.md

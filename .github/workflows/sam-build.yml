@@ -1,0 +1,34 @@
+name: Build Lambda and upload to S3
+on:
+  workflow_dispatch:
+    inputs:
+      keep-artifacts:
+        description: Whether to keep the build artifacts
+        type: boolean
+        default: false
+jobs:
+  build-upload:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8.6' 
+      - uses: aws-actions/setup-sam@v1
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.OIDC_IAM_ROLE }}
+          aws-region: us-east-1
+      - run: sam build --use-container
+      - run: echo "RANDOM_HASH=$(python $GITHUB_WORKSPACE/scripts/generate_hash.py)" >> $GITHUB_ENV
+      - run: cd $GITHUB_WORKSPACE/.aws-sam/build/HelloWorldFunction && zip -r $GITHUB_WORKSPACE/build-${RANDOM_HASH}.zip .
+      - run: cd $GITHUB_WORKSPACE
+      - run: aws s3 cp $GITHUB_WORKSPACE/build-${RANDOM_HASH}.zip s3://xueke477-test-cicd-artifacts
+      - if: ${{ inputs.keep-artifacts }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ env.RANDOM_HASH }}
+          path: ${{ github.workspace }}/.aws-sam/build/HelloWorldFunction

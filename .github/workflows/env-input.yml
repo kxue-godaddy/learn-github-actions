@@ -1,0 +1,15 @@
+name: Using inputs in env context
+on:
+  workflow_dispatch:
+    inputs:
+      VAR1:
+        type: string
+        default: "abc"
+env:
+  VAR2: ${{ inputs.VAR1 }}
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ inputs.VAR1 }}
+      - run: echo ${{ env.VAR2 }}

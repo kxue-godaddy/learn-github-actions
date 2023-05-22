@@ -1,0 +1,13 @@
+name: Test User
+on: workflow_dispatch
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    steps:
+      - run: >
+          docker run --rm -v ${{ github.workspace }}:/data/ -w /data
+          --entrypoint=mkdir python:3.9.15-alpine hello
+      - run: stat -c "%u:%g" hello
+      - run: ls -l
+      - run: stat -c "%u:%g" .
+      - run: rmdir hello

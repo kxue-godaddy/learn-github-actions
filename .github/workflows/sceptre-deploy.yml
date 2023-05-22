@@ -1,0 +1,33 @@
+name: Deploy AWS resources with Sceptre
+on:
+  workflow_dispatch:
+    inputs:
+      bucket_name_suffix:
+        description: Suffix of S3 bucket name. Skip to use a random hash.
+        type: string
+        default: ''
+      environment:
+        description: The environment to deploy to.
+        type: string
+        default: 'dev'
+jobs:
+  sceptre-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8.6' 
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.OIDC_IAM_ROLE }}
+          aws-region: us-east-1
+      - run: pip install sceptre
+      - if: ${{ github.event.inputs.bucket_name_suffix == '' }}
+        run: echo "BUCKET_NAME_SUFFIX=$(python $GITHUB_WORKSPACE/scripts/generate_hash.py)" >> $GITHUB_ENV
+      - if: ${{ github.event.inputs.bucket_name_suffix != '' }}
+        run: echo "BUCKET_NAME_SUFFIX=${{ github.event.inputs.bucket_name_suffix }}" >> $GITHUB_ENV
+      - run: sceptre --dir sceptre --var bucket_name_suffix=${{ env.BUCKET_NAME_SUFFIX }} launch -y ${{ github.event.inputs.environment }}

@@ -1,0 +1,77 @@
+name: Unit test using poetry
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'src/**.py'
+      - 'tests/**.py'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'src/**.py'
+      - 'tests/**.py'
+  workflow_dispatch:
+    inputs:
+      skip_migration:
+        description: Skip migration
+        type: boolean
+        default: false
+      path_to_tests:
+        type: string
+        default: ''
+  workflow_call:
+    inputs:
+      ref:
+        description: with.ref to pass to actions/checkout
+        type: string
+        default: ''
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unit-test-run:
+    runs-on: ubuntu-latest
+    outputs:
+      pytest-outcome: ${{ steps.pytest.outcome }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Cache poetry installation
+        id: cache-poetry
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/pipx/venvs/poetry/**
+          key: master-branch-poetry-cache-small
+      - name: Install poetry if cache misses
+        if: ${{ steps.cache-poetry.outputs.cache-hit != 'true' }}
+        run: PIPX_HOME=$GITHUB_WORKSPACE/pipx pipx install poetry
+      - run: echo "$GITHUB_WORKSPACE/pipx/venvs/poetry/bin" >> $GITHUB_PATH
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8' 
+          cache: 'poetry'
+      - run: poetry install
+      - id: pytest
+        run: PYTHONPATH=src poetry run pytest --cov=src --cov-report html:cov_html tests/${{ inputs.path_to_tests }} > unit-test-output.txt
+        continue-on-error: true
+      - name: Upload coverage report
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
+        with:
+          name: coverage-${{ github.run_id }}
+          path: ${{ github.workspace }}/cov_html/
+      - name: Display test report
+        run: cat unit-test-output.txt
+      - name: Upload test report
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
+        with:
+          name: unit-test-output-${{ github.run_id }}
+          path: ${{ github.workspace }}/unit-test-output.txt
+  unit-test-conclude:
+    needs: unit-test-run
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ needs.unit-test-run.outputs.pytest-outcome == 'failure' }}
+        run: echo "Unit test failed!" && exit 1

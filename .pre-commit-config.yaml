@@ -1,0 +1,7 @@
+repos:
+- repo: /Users/kxue/temp/custom-git-hooks
+  rev: v0.2.1
+  hooks:
+  - id: shell-cmd-on-change
+    args: [--command, "echo hello world"]
+    stages: [post-merge, manual]

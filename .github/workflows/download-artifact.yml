@@ -1,0 +1,23 @@
+name: Download uploaded build artifact by name
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Artifact name
+        type: string
+        required: true
+      run_id:
+        description: Workflow run_id, can be obtained from URL
+        type: string
+        required: true
+jobs:
+  download-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - id: download
+        uses: xueke477/download-artifact@173f9e4e6404e8ca72aec144c41e93795e68d2bd
+        with:
+          run_id: ${{ inputs.run_id }}
+          name: ${{ inputs.name }}
+      - name: Display structure of downloaded files
+        run: ls -R
